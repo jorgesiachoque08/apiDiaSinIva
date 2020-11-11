@@ -44,7 +44,7 @@ class DescuentosSinImpuestosController extends Controller {
     {
         try{
             $productos = json_decode($params["productos"]);
-            if($productos){
+            if(is_array($productos)){
                 if(count($productos) > 0){
                     $sql = "SELECT 
                         dsi.*
