@@ -174,7 +174,7 @@ class DescuentosSinImpuestosController extends Controller {
             $this->response->setJsonContent(array(
                 "code"=>$codigo,
                 "message" => 'Error en el servidor',
-                "data"=>$ex->getMessage()
+                "data"=>false
             ));
         }
         $this->response->setStatusCode($codigo);

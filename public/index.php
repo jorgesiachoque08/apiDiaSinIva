@@ -2,7 +2,7 @@
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, UPDATE, DELETE, OPTIONS, PATCH");
 header("Access-Control-Allow-Headers: Authorization, Content-Type, Accept, Origin, User-Agent, Cache-Control, X-Requested-With, Access-Control-Allow-Origin");
-
+header("Access-Control-Allow-Credentials: true");
 use Phalcon\Mvc\Micro;
 
 define('BASE_PATH', dirname(__DIR__));
