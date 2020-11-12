@@ -114,9 +114,9 @@ class DescuentosSinImpuestosController extends Controller {
                                     foreach ($data as $value2) {
                                         if($value["cod"] == $value2["cod_producto"]){
                                             if(($dsi[0]["nro_articulos_tercero"]-$value2["cantidad"]) <= 0 ){
-                                                $arrayRetorno[] = array("cod_producto"=>$value["cod"],"cant_disponible"=>0,"valor_impuesto"=>$value["valor_impuesto"]);
+                                                $arrayRetorno[] = array("cod_producto"=>$value["cod"],"cant_disponible"=>0,"valor_impuesto"=>(double)$value["valor_impuesto"]);
                                             }else{
-                                                $arrayRetorno[] = array("cod_producto"=>$value["cod"],"cant_disponible"=>$dsi[0]["nro_articulos_tercero"]-$value2["cantidad"],"valor_impuesto"=>$value["valor_impuesto"]);
+                                                $arrayRetorno[] = array("cod_producto"=>$value["cod"],"cant_disponible"=>$dsi[0]["nro_articulos_tercero"]-$value2["cantidad"],"valor_impuesto"=>(double)$value["valor_impuesto"]);
                                             }
                                             
                                             $ctrl = true;
@@ -124,7 +124,7 @@ class DescuentosSinImpuestosController extends Controller {
                                         }
                                     }
                                     if($ctrl == false){
-                                        $arrayRetorno[] = array("cod_producto"=>$value["cod"],"cant_disponible"=>(int)$dsi[0]["nro_articulos_tercero"],"valor_impuesto"=>$value["valor_impuesto"]);
+                                        $arrayRetorno[] = array("cod_producto"=>$value["cod"],"cant_disponible"=>(int)$dsi[0]["nro_articulos_tercero"],"valor_impuesto"=>(double)$value["valor_impuesto"]);
                                     }
                                     
                                 }
