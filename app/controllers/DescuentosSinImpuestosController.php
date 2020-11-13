@@ -343,7 +343,7 @@ class DescuentosSinImpuestosController extends Controller {
             if(count($data) > 0){
                 $codigo = 200;
                 $mensaje = "Ok";
-                $retorno = $data[0]["cod"];
+                $retorno = $data;
             }else{
                 $codigo = 404;
                 $mensaje = "No se encontraron resultados";

@@ -16,7 +16,7 @@ $app->get(
   function() use ($AuthController,$DescuentosSinImpuestosController) {
     $user = $AuthController->verificarToken();
     if ($user) {
-      return json_encode($listarProductosSinIva->obtener_dsi());
+      return json_encode($DescuentosSinImpuestosController->listarProductosSinIva());
     }
   }
 );
