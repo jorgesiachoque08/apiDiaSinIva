@@ -11,6 +11,16 @@ $app->get(
   }
 );
 
+$app->get(
+  '/apiDiaSinIva/listarProductosSinIva',
+  function() use ($AuthController,$DescuentosSinImpuestosController) {
+    $user = $AuthController->verificarToken();
+    if ($user) {
+      return json_encode($listarProductosSinIva->obtener_dsi());
+    }
+  }
+);
+
 $app->post(
   '/apiDiaSinIva/validarProducto/{cod_tercero}/{cod_mp}',
   function($cod_tercero,$cod_mp) use ($AuthController,$DescuentosSinImpuestosController,$request,$validador) {

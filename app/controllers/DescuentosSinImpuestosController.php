@@ -326,4 +326,46 @@ class DescuentosSinImpuestosController extends Controller {
         $this->response->send();
     }
 
+    public function listarProductosSinIva()
+    {
+        try{
+            $sql = "SELECT 
+                p.cod as cod_producto,
+                p.descripcion as producto,
+                i.valor as valor_impuesto
+            FROM productos p
+                inner join detalles_lim_param_fisc dlf on p.cod_categoria = dlf.cod_categoria
+                inner join descuentos_sin_impuestos dsi on dlf.cod_lim_pf = dsi.cod_lim_pf
+                inner join impuestos i on p.cod_impuesto = i.cod
+            where current_timestamp() between CONCAT(dsi.fecha_inicial, ' ', dsi.hora_inicial) and CONCAT(dsi.fecha_final, ' ', dsi.hora_final);";
+            $data = $this->db->fetchAll($sql);
+
+            if(count($data) > 0){
+                $codigo = 200;
+                $mensaje = "Ok";
+                $retorno = $data[0]["cod"];
+            }else{
+                $codigo = 404;
+                $mensaje = "No se encontraron resultados";
+                $retorno = null;
+
+            }
+            $this->response->setJsonContent(array(
+                "code"=>$codigo,
+                "message" =>$mensaje,
+                "data" =>$retorno
+            ));
+        } catch (Exception $ex) {
+            $codigo = 500;
+            $this->response->setJsonContent(array(
+                "code"=>$codigo,
+                "message" => 'Error en el servidor',
+                "data"=>false
+            ));
+        }
+        $this->response->setStatusCode($codigo);
+        $this->response->send();
+        
+    }
+
 }

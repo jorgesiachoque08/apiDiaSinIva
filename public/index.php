@@ -27,7 +27,7 @@ $app->response->setHeader('Access-Control-Allow-Origin',$origin
         'true'
     ); */
 
-$app->before(
+/* $app->before(
     function () use ($app) {
     
         $origin = $app->request->getHeader("ORIGIN") ? $app->request->getHeader("ORIGIN") : '*';
@@ -38,6 +38,6 @@ $app->before(
     
     
         return true;
-    });
+    }); */
     $app->options('/{catch:(.*)}', function() use ($app) { $app->response->setStatusCode(200, "OK")->send(); });
 include APP_PATH .'/config/router.php';
