@@ -341,9 +341,13 @@ class DescuentosSinImpuestosController extends Controller {
             $data = $this->db->fetchAll($sql);
 
             if(count($data) > 0){
+                $dataRetorno = [];
+                foreach ($data as $key => $value) {
+                    $dataRetorno[] = array("cod_producto"=>$value["cod_producto"],"producto"=>$value["producto"],"valor_impuesto"=>$value["valor_impuesto"],"dsi"=>true);
+                }
                 $codigo = 200;
                 $mensaje = "Ok";
-                $retorno = $data;
+                $retorno = $dataRetorno;
             }else{
                 $codigo = 404;
                 $mensaje = "No se encontraron resultados";
