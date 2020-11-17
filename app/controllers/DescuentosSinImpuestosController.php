@@ -355,7 +355,7 @@ class DescuentosSinImpuestosController extends Controller {
             if(count($data) > 0){
                 $dataRetorno = [];
                 foreach ($data as $key => $value) {
-                    $dataRetorno[] = array("cod_producto"=>$value["cod_producto"],"producto"=>$value["producto"],"valor_impuesto"=>$value["valor_impuesto"],"dsi"=>true);
+                    $dataRetorno[] = array("cod_producto"=>$value["cod_producto"],"producto"=>$value["producto"],"discount"=>(double)$value["valor_impuesto"],"dsi"=>true);
                 }
                 $codigo = 200;
                 $mensaje = "Ok";
