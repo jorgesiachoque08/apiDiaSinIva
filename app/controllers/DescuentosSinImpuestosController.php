@@ -1,7 +1,6 @@
 <?php
-
 use Phalcon\Mvc\Controller;
-use App\Models\TercerosDescuentosSinImpuesto;
+use App\Models\TercerosDescuentosSinImpuestos;
 class DescuentosSinImpuestosController extends Controller {
 
     public function obtener_dsi()
@@ -188,13 +187,13 @@ class DescuentosSinImpuestosController extends Controller {
             $compras = json_decode($params["compras"]);
             if(is_array($compras)){
                 if(count($compras) > 0){
-                    $TercerosDescuentosSinImpuesto = TercerosDescuentosSinImpuesto::find([
+                    $TercerosDescuentosSinImpuestos = TercerosDescuentosSinImpuestos::find([
                         'conditions' => 'object_id_factura=:object_id_factura:',
                         'bind'       => [
                             'object_id_factura' => $cod_factura
                         ]
                     ]);
-                    if(count($TercerosDescuentosSinImpuesto) == 0){
+                    if(count($TercerosDescuentosSinImpuestos) == 0){
                         $sql = "SELECT 
                         dsi.cod
                         FROM descuentos_sin_impuestos dsi
@@ -264,7 +263,7 @@ class DescuentosSinImpuestosController extends Controller {
                                             if($insert){
                                                 $this->db->commit();
                                                 $codigo = 200;
-                                                $mensaje = $cod_factura;
+                                                $mensaje = "Ok";
                                                 $retorno = true;
 
                                             }else{
