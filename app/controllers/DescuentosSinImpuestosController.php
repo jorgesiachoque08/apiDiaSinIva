@@ -1,7 +1,7 @@
 <?php
 
 use Phalcon\Mvc\Controller;
-use App\Models\Categorias;
+use App\Models\TercerosDescuentosSinImpuesto;
 class DescuentosSinImpuestosController extends Controller {
 
     public function obtener_dsi()
@@ -186,115 +186,128 @@ class DescuentosSinImpuestosController extends Controller {
     {
         try{
             $compras = json_decode($params["compras"]);
-            if($compras){
+            if(is_array($compras)){
                 if(count($compras) > 0){
-                    $sql = "SELECT 
-                    dsi.cod
-                    FROM descuentos_sin_impuestos dsi
-                    where current_timestamp() between CONCAT(dsi.fecha_inicial, ' ', dsi.hora_inicial) and CONCAT(dsi.fecha_final, ' ', dsi.hora_final)";
-                    $data = $this->db->fetchAll($sql);
-                    if(count($data) > 0){
-                        $sql = "SELECT mp.object_id 
-                        FROM medios_pagos mp 
-                        inner join descuentos_sin_impuesto_mp dsimp on mp.cod = dsimp.cod_medio_pago and dsimp.cod_descuento_sin_impuesto = ".$data[0]["cod"]."
-                        where mp.object_id = '".$cod_mp."'";
+                    $TercerosDescuentosSinImpuesto = TercerosDescuentosSinImpuesto::find([
+                        'conditions' => 'object_id_factura=:object_id_factura:',
+                        'bind'       => [
+                            'object_id_factura' => $cod_factura
+                        ]
+                    ]);
+                    if(count($TercerosDescuentosSinImpuesto) == 0){
+                        $sql = "SELECT 
+                        dsi.cod
+                        FROM descuentos_sin_impuestos dsi
+                        where current_timestamp() between CONCAT(dsi.fecha_inicial, ' ', dsi.hora_inicial) and CONCAT(dsi.fecha_final, ' ', dsi.hora_final)";
                         $data = $this->db->fetchAll($sql);
                         if(count($data) > 0){
-                            $comprasValidador = [];
-                            $ctrl = true;
-                            $sql = "select 
-                                        p.cod,dsi.cod as cod_dsi
-                                    from
-                                        descuentos_sin_impuestos dsi
-                                        inner join limites_param_fisc lpf on lpf.cod=dsi.cod_lim_pf
-                                        inner join detalles_lim_param_fisc dlpf on dlpf.cod_lim_pf =lpf.cod
-                                        inner join valores_parametros_fiscales vpf on vpf.cod_parametro_fiscal=lpf.cod
-                                        inner join descuentos_sin_impuesto_mp dsimp on dsimp.cod_descuento_sin_impuesto=dsi.cod
-                                        inner join productos p on p.cod_categoria=dlpf.cod_categoria
-                                        inner join medios_pagos mp on dsimp.cod_medio_pago=mp.cod
-                                    where
-                                        mp.object_id='".$cod_mp."'
-                                        and current_timestamp() between CONCAT(dsi.fecha_inicial, ' ', dsi.hora_inicial) and CONCAT(dsi.fecha_final, ' ', dsi.hora_final)
-                                        and p.cod in ";
-                            $sqlCodProductos = "(";
-                            foreach ($compras as $value) {
-                                if(isset($value->cod_producto) && (isset($value->cantidad) && is_numeric($value->cantidad) && $value->cantidad > 0 )){
-                                    if (isset($comprasValidador[$value->cod_producto])) {
-                                        $comprasValidador[$value->cod_producto]->cantidad = $comprasValidador[$value->cod_producto]->cantidad+$value->cantidad;
+                            $sql = "SELECT mp.object_id 
+                            FROM medios_pagos mp 
+                            inner join descuentos_sin_impuesto_mp dsimp on mp.cod = dsimp.cod_medio_pago and dsimp.cod_descuento_sin_impuesto = ".$data[0]["cod"]."
+                            where mp.object_id = '".$cod_mp."'";
+                            $data = $this->db->fetchAll($sql);
+                            if(count($data) > 0){
+                                $comprasValidador = [];
+                                $ctrl = true;
+                                $sql = "select 
+                                            p.cod,dsi.cod as cod_dsi
+                                        from
+                                            descuentos_sin_impuestos dsi
+                                            inner join limites_param_fisc lpf on lpf.cod=dsi.cod_lim_pf
+                                            inner join detalles_lim_param_fisc dlpf on dlpf.cod_lim_pf =lpf.cod
+                                            inner join valores_parametros_fiscales vpf on vpf.cod_parametro_fiscal=lpf.cod
+                                            inner join descuentos_sin_impuesto_mp dsimp on dsimp.cod_descuento_sin_impuesto=dsi.cod
+                                            inner join productos p on p.cod_categoria=dlpf.cod_categoria
+                                            inner join medios_pagos mp on dsimp.cod_medio_pago=mp.cod
+                                        where
+                                            mp.object_id='".$cod_mp."'
+                                            and current_timestamp() between CONCAT(dsi.fecha_inicial, ' ', dsi.hora_inicial) and CONCAT(dsi.fecha_final, ' ', dsi.hora_final)
+                                            and p.cod in ";
+                                $sqlCodProductos = "(";
+                                foreach ($compras as $value) {
+                                    if(isset($value->cod_producto) && (isset($value->cantidad) && is_numeric($value->cantidad) && $value->cantidad > 0 )){
+                                        if (isset($comprasValidador[$value->cod_producto])) {
+                                            $comprasValidador[$value->cod_producto]->cantidad = $comprasValidador[$value->cod_producto]->cantidad+$value->cantidad;
+                                        }else{
+                                            $comprasValidador[$value->cod_producto] = $value;
+                                            $sqlCodProductos .= $value->cod_producto.",";
+                                        }
+                                        
                                     }else{
-                                        $comprasValidador[$value->cod_producto] = $value;
-                                        $sqlCodProductos .= $value->cod_producto.",";
+                                        $ctrl = false;
+                                        break;
                                     }
-                                    
-                                }else{
-                                    $ctrl = false;
-                                    break;
+
                                 }
 
-                            }
-
-                            if($ctrl){
-                                $sqlCodProductos = substr($sqlCodProductos,0,-1);
-                                $sql = $sql.$sqlCodProductos.")";
-                                $productosSinImp = $this->db->fetchAll($sql);
-                                if(count($productosSinImp) > 0){
-                                    $this->db->begin();
-                                    try {
-                                        $sqlinsert = "insert into terceros_descuentos_sin_impuestos 
-                                        (object_id_tercero, object_id_factura,cod_descuento_sin_impuesto,cod_producto,cantidad)
-                                        value ";
-                                        foreach ($comprasValidador as $value) {
-                                            foreach ($productosSinImp as $value2) {
-                                                if($value->cod_producto == $value2["cod"]){
-                                                    $sqlinsert.= "('".$cod_tercero."','".$cod_factura."',".$value2["cod_dsi"].",".$value2["cod"].",".$value->cantidad."),";
-                                                break;
+                                if($ctrl){
+                                    $sqlCodProductos = substr($sqlCodProductos,0,-1);
+                                    $sql = $sql.$sqlCodProductos.")";
+                                    $productosSinImp = $this->db->fetchAll($sql);
+                                    if(count($productosSinImp) > 0){
+                                        $this->db->begin();
+                                        try {
+                                            $sqlinsert = "insert into terceros_descuentos_sin_impuestos 
+                                            (object_id_tercero, object_id_factura,cod_descuento_sin_impuesto,cod_producto,cantidad)
+                                            value ";
+                                            foreach ($comprasValidador as $value) {
+                                                foreach ($productosSinImp as $value2) {
+                                                    if($value->cod_producto == $value2["cod"]){
+                                                        $sqlinsert.= "('".$cod_tercero."','".$cod_factura."',".$value2["cod_dsi"].",".$value2["cod"].",".$value->cantidad."),";
+                                                    break;
+                                                    }
                                                 }
+                                                
                                             }
-                                            
-                                        }
-                                        $sqlinsert = substr($sqlinsert, 0, -1);
-                                        $insert = $this->db->execute($sqlinsert);
-                                        if($insert){
-                                            $this->db->commit();
-                                            $codigo = 200;
-                                            $mensaje = $cod_factura;
-                                            $retorno = true;
+                                            $sqlinsert = substr($sqlinsert, 0, -1);
+                                            $insert = $this->db->execute($sqlinsert);
+                                            if($insert){
+                                                $this->db->commit();
+                                                $codigo = 200;
+                                                $mensaje = $cod_factura;
+                                                $retorno = true;
 
-                                        }else{
+                                            }else{
+                                                $this->db->rollback();
+                                                $codigo = 400;
+                                                $mensaje = "Error al guardar los datos";
+                                                $retorno = false;
+                                            }
+                                        } catch (Exception $Ex) {
                                             $this->db->rollback();
                                             $codigo = 400;
                                             $mensaje = "Error al guardar los datos";
                                             $retorno = false;
                                         }
-                                    } catch (Exception $Ex) {
-                                        $this->db->rollback();
-                                        $codigo = 400;
-                                        $mensaje = "Error al guardar los datos";
-                                        $retorno = false;
-                                    }
 
+                                    }else{
+                                        $codigo = 404;
+                                        $mensaje = "Ningun producto tiene descuento";
+                                        $retorno = false;
+                        
+                                    }
+                                    
                                 }else{
-                                    $codigo = 404;
-                                    $mensaje = "Ningun producto tiene descuento";
+                                    $codigo = 400;
+                                    $mensaje = "parametro compra no tiene los campos requeridos o sus valores son incorrectos";
                                     $retorno = false;
-                    
                                 }
-                                
                             }else{
-                                $codigo = 400;
-                                $mensaje = "parametro compra no tiene los campos requeridos o sus valores son incorrectos";
+                                $codigo = 404;
+                                $mensaje = "Este metodo de pago no aplica para el dia sin iva";
                                 $retorno = false;
                             }
                         }else{
                             $codigo = 404;
-                            $mensaje = "Este metodo de pago no aplica para el dia sin iva";
+                            $mensaje = "Hoy no es dia sin iva";
                             $retorno = false;
                         }
                     }else{
-                        $codigo = 404;
-                        $mensaje = "Hoy no es dia sin iva";
-                        $retorno = false;
+                        $codigo = 200;
+                        $mensaje = "Ya se registro esta factura";
+                        $retorno = true;
                     }
+                    
                 
                     
                 }else{
