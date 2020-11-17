@@ -257,7 +257,7 @@ class DescuentosSinImpuestosController extends Controller {
                                         if($insert){
                                             $this->db->commit();
                                             $codigo = 200;
-                                            $mensaje = "Ok";
+                                            $mensaje = $cod_factura;
                                             $retorno = true;
 
                                         }else{
