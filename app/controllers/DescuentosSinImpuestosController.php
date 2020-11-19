@@ -240,10 +240,10 @@ class DescuentosSinImpuestosController extends Controller {
                                     $sql = "SELECT 
                                         tdsi.object_id_tercero,
                                         tdsi.cod_descuento_sin_impuesto,
-                                        ".$value["cod"]." producto, -- producto
-                                        sum(case when p.cod is null then 0 else tdsi.cantidad end) as cantidad
+                                        ".$value["cod"]." producto,
+                                        sum(tdsi.cantidad) as cantidad
                                     FROM terceros_descuentos_sin_impuestos as tdsi
-                                        left outer JOIN productos p on p.cod = tdsi.cod_producto and p.cod_categoria in (select cod_categoria from productos where cod = ".$value["cod"].")
+                                        INNER JOIN productos p on p.cod = tdsi.cod_producto and p.cod_categoria in (select cod_categoria from productos where cod = ".$value["cod"].")
                                     where 
                                         tdsi.object_id_tercero = '".$cod_tercero."' 
                                         and tdsi.cod_descuento_sin_impuesto = ".$dsi[0]["cod"]."
