@@ -39,7 +39,7 @@ class DescuentosSinImpuestosController extends Controller {
         $this->response->send();
     }
 
-    public function validarProducto($cod_tercero,$cod_mp,$params)
+    /* public function validarProducto($cod_tercero,$cod_mp,$params)
     {
         try{
             $productos = json_decode($params["productos"]);
@@ -125,6 +125,173 @@ class DescuentosSinImpuestosController extends Controller {
                                     if($ctrl == false){
                                         $arrayRetorno[] = array("cod_producto"=>$value["cod"],"cant_disponible"=>(int)$dsi[0]["nro_articulos_tercero"],"valor_impuesto"=>(double)$value["valor_impuesto"]);
                                     }
+                                    
+                                }
+                                
+                                $codigo = 200;
+                                $mensaje = "Ok";
+                                $retorno = $arrayRetorno;
+
+                            }else{
+                                $codigo = 404;
+                                $mensaje = "No se encontraron resultados";
+                                $retorno = null;
+                
+                            }
+                            
+                        }else{
+                            $codigo = 400;
+                            $mensaje = "parametro productos no tiene los campos requeridos o sus valores son incorrectos";
+                            $retorno = [];
+                        }
+                    }else{
+                        $codigo = 404;
+                        $mensaje = "No se encontraron resultados";
+                        $retorno = null;
+
+                    }
+                    
+                }else{
+                    $codigo = 400;
+                    $mensaje = "parametro  productos vacio";
+                    $retorno = [];
+                }
+                
+            }else{
+                $codigo = 400;
+                $mensaje = "parametro productos invalido";
+                $retorno = [];
+            }
+            
+            $this->response->setJsonContent(array(
+                "code"=>$codigo,
+                "message" =>$mensaje,
+                "data" =>$retorno
+            ));
+        } catch (Exception $ex) {
+            $codigo = 500;
+            $this->response->setJsonContent(array(
+                "code"=>$codigo,
+                "message" => 'Error en el servidor',
+                "data"=>false
+            ));
+        }
+        $this->response->setStatusCode($codigo);
+        $this->response->send();
+    } */
+
+    public function validarProducto($cod_tercero,$cod_mp,$params)
+    {
+        try{
+            $productos = json_decode($params["productos"]);
+            if(is_array($productos)){
+                if(count($productos) > 0){
+                    $sql = "SELECT 
+                        dsi.*
+                        FROM descuentos_sin_impuestos dsi
+                        where current_timestamp() between CONCAT(dsi.fecha_inicial, ' ', dsi.hora_inicial) and CONCAT(dsi.fecha_final, ' ', dsi.hora_final)";
+                    $dsi = $this->db->fetchAll($sql);
+
+                    if(count($dsi) > 0){
+                        $productoValidador = [];
+                        $ctrl = true;
+                        $sql = "select 
+                                    p.cod,
+                                    i.valor as valor_impuesto,
+                                    c.id_portafolio
+                                from
+                                        descuentos_sin_impuestos dsi
+                                        inner join limites_param_fisc lpf on lpf.cod=dsi.cod_lim_pf
+                                        inner join detalles_lim_param_fisc dlpf on dlpf.cod_lim_pf =lpf.cod
+                                        inner join valores_parametros_fiscales vpf on vpf.cod_parametro_fiscal=lpf.cod
+                                        inner join descuentos_sin_impuesto_mp dsimp on dsimp.cod_descuento_sin_impuesto=dsi.cod
+                                        inner join productos p on p.cod_categoria=dlpf.cod_categoria
+                                        inner join impuestos i on p.cod_impuesto = i.cod
+                                        inner join medios_pagos mp on dsimp.cod_medio_pago=mp.cod
+                                        inner join categorias c on c.cod = p.cod_categoria
+                                where
+                                    mp.object_id='".$cod_mp."'
+                                    and dsi.cod = ".$dsi[0]["cod"]."
+                                    and p.cod in ";
+                        $sqlCodProductos = "(";
+                        foreach ($productos as $value) {
+                            if(isset($value->cod_producto) && (isset($value->cantidad) && is_int($value->cantidad))){
+                                
+                                if (!isset($productoValidador[$value->cod_producto])) {
+                                    $productoValidador[$value->cod_producto] = $value;
+                                    $sqlCodProductos .= $value->cod_producto.",";
+                                }else{
+                                    $productoValidador[$value->cod_producto]->cantidad = $productoValidador[$value->cod_producto]->cantidad + $value->cantidad;
+                                }
+                            }else{
+                                $ctrl = false;
+                                break;
+                            }
+
+                        }
+
+                        if($ctrl){
+                            $sqlCodProductos = substr($sqlCodProductos,0,-1);
+                            $sql = $sql.$sqlCodProductos.")";
+                            $productosSinImp = $this->db->fetchAll($sql);
+                            if(count($productosSinImp) > 0){
+                                $data = [];
+                                foreach ($productosSinImp as $value) {
+                                    $sql = "SELECT 
+                                        tdsi.object_id_tercero,
+                                        tdsi.cod_descuento_sin_impuesto,
+                                        ".$value["cod"]." producto, -- producto
+                                        sum(case when p.cod is null then 0 else tdsi.cantidad end) as cantidad
+                                    FROM terceros_descuentos_sin_impuestos as tdsi
+                                        left outer JOIN productos p on p.cod = tdsi.cod_producto and p.cod_categoria in (select cod_categoria from productos where cod = ".$value["cod"].")
+                                    where 
+                                        tdsi.object_id_tercero = '".$cod_tercero."' 
+                                        and tdsi.cod_descuento_sin_impuesto = ".$dsi[0]["cod"]."
+                                        
+                                    GROUP BY tdsi.object_id_tercero,tdsi.cod_descuento_sin_impuesto,p.cod_categoria";
+                                    $data[] = $this->db->fetchOne($sql);
+                                }
+                                $arrayRetorno = [];
+                                $categoriasStock = [];
+                                //$productoValidador[$value->cod_producto]->
+                                foreach ($productosSinImp as $value) {
+                                    $ctrl = false; 
+                                    if(isset($categoriasStock[$value["id_portafolio"]])){
+                                        $arrayRetorno[] = array("cod_producto"=>$value["cod"],"cant_disponible"=>(int)$categoriasStock[$value["id_portafolio"]]->disponible,"valor_impuesto"=>(double)$value["valor_impuesto"]);
+                                        if($categoriasStock[$value["id_portafolio"]]->disponible-$productoValidador[$value["cod"]]->cantidad <= 0){
+                                            $categoriasStock[$value["id_portafolio"]]->disponible = 0;
+                                        }else{
+                                            $categoriasStock[$value["id_portafolio"]]->disponible = $categoriasStock[$value["id_portafolio"]]->disponible-$productoValidador[$value["cod"]]->cantidad;
+                                        }
+                                    }else{
+                                        foreach ($data as $value2) {
+                                            if($value["cod"] == $value2["producto"]){
+                                                if(($dsi[0]["nro_articulos_tercero"]-$value2["cantidad"]) <= 0 ){
+                                                    $arrayRetorno[] = array("cod_producto"=>$value["cod"],"cant_disponible"=>0,"valor_impuesto"=>(double)$value["valor_impuesto"]);
+                                                }else{
+                                                    if(($dsi[0]["nro_articulos_tercero"]-$value2["cantidad"])-$productoValidador[$value["cod"]]->cantidad <= 0){
+                                                        $categoriasStock[$value["id_portafolio"]] = (object)array("cat"=>$value["id_portafolio"],"disponible"=>0);
+                                                        $arrayRetorno[] = array("cod_producto"=>$value["cod"],"cant_disponible"=>$dsi[0]["nro_articulos_tercero"]-$value2["cantidad"],"valor_impuesto"=>(double)$value["valor_impuesto"]);
+                                                    }else{
+                                                        $categoriasStock[$value["id_portafolio"]] = (object)array("cat"=>$value["id_portafolio"],"disponible"=>($dsi[0]["nro_articulos_tercero"]-$value2["cantidad"])-$productoValidador[$value["cod"]]->cantidad);
+                                                        $arrayRetorno[] = array("cod_producto"=>$value["cod"],"cant_disponible"=>$dsi[0]["nro_articulos_tercero"]-$value2["cantidad"],"valor_impuesto"=>(double)$value["valor_impuesto"]); 
+                                                    }
+                                                    
+                                                }
+                                                $ctrl = true;
+                                                break;
+                                            }
+                                        }
+                                        if($ctrl == false){
+                                            if(($dsi[0]["nro_articulos_tercero"]-$productoValidador[$value["cod"]]->cantidad) <= 0 ){
+                                                $categoriasStock[$value["id_portafolio"]] = (object)array("cat"=>$value["id_portafolio"],"disponible"=>0);
+                                            }else{
+                                                $categoriasStock[$value["id_portafolio"]] = (object)array("cat"=>$value["id_portafolio"],"disponible"=>$dsi[0]["nro_articulos_tercero"]-$productoValidador[$value["cod"]]->cantidad);
+                                            }
+                                            $arrayRetorno[] = array("cod_producto"=>$value["cod"],"cant_disponible"=>(int)$dsi[0]["nro_articulos_tercero"],"valor_impuesto"=>(double)$value["valor_impuesto"]);
+                                        }  
+                                    }
+                                   
                                     
                                 }
                                 
